@@ -187,8 +187,9 @@ function parsePbn(text){
       playLeader=pm[1];
       const lines=pm[2].split('\n'); let ti=0;
       for(let i=0;i<lines.length;i++){
-        const cards=lines[i].replace(/\{[^}]*\}/g,'').trim().split(/\s+/).filter(c=>/^[SHDC][2-9AKQJT]$/i.test(c));
-        if(cards.length>=1 && cards.length<=4 && lines[i].match(/[SHDC][2-9AKQJT]/i)){
+        const raw=lines[i].replace(/\{[^}]*\}/g,'').replace(/10/g,'T').trim();
+        const cards=raw.split(/\s+/).filter(c=>/^[SHDC][2-9AKQJT]$/i.test(c));
+        if(cards.length>=1 && cards.length<=4 && /[SHDC][2-9AKQJT]/i.test(raw)){
           play.push(cards.map(c=>c.toUpperCase()));
           const cm=lines[i].match(/\{([^}]*)\}/);
           if(cm) playComments[ti]=cm[1].trim();
@@ -208,7 +209,7 @@ function parsePbn(text){
       for(let hi=0; hi<4; hi++){
         const hs=handToks[hi];
         if(hs===undefined || hs==='' || hs==='-'){ filled.push(null); d=nextDir(d); continue; }
-        hs.split('.').forEach((s,j)=>{ if(j<4) hands[d][SUIT_ORDER[j]]=s==='-'?[]:s.toUpperCase().split(''); });
+        hs.split('.').forEach((s,j)=>{ if(j<4) hands[d][SUIT_ORDER[j]]=(s==='-'||s==='')?[]:s.toUpperCase().replace(/10/g,'T').split(''); });
         filled.push(d); d=nextDir(d);
       }
       // If exactly one hand was omitted, reconstruct it from the remaining 51 cards.
@@ -222,7 +223,7 @@ function parsePbn(text){
       }
     }
     boards.push({
-      board:tags.Board||'?', event:tags.Event||'', site:tags.Site||'', date:tags.Date||'',
+      board:tags.Board||'?', event:tags.Event||'', site:tags.Site||'', date:tags.Date||'', round:tags.Round||'',
       playerN:tags.North||'', playerE:tags.East||'', playerS:tags.South||'', playerW:tags.West||'',
       scoring:tags.Scoring||'MP', result:tags.Result||'',
       hands, declarer:tags.Declarer||'S', contract:tags.Contract||'', vulnerable:tags.Vulnerable||'None',
@@ -242,24 +243,32 @@ function serializeDeal(hands){
   return 'N:'+['N','E','S','W'].map(seatStr).join(' ');
 }
 function serializeBoard(b){
-  const q=(k,v)=>`[${k} "${v==null?'':v}"]`;
+  // Empty mandatory values become "?" per the PBN/PGN standard; a strict
+  // parser rejects blank or missing mandatory tags.
+  const q=(k,v)=>`[${k} "${(v==null||v==='')?'?':v}"]`;
+  const qOpt=(k,v)=>`[${k} "${v==null?'':v}"]`; // for truly optional values
   const L=[];
-  L.push(q('Event',b.event||''));
-  if(b.site) L.push(q('Site',b.site));
-  if(b.date) L.push(q('Date',b.date));
-  L.push(q('Board',b.board||'?'));
-  L.push(q('West',b.playerW||''));
-  L.push(q('North',b.playerN||''));
-  L.push(q('East',b.playerE||''));
-  L.push(q('South',b.playerS||''));
+  // Mandatory tag roster, fixed order, before anything else.
+  L.push(q('Event',b.event));
+  L.push(q('Site',b.site));
+  L.push(q('Date',b.date));
+  L.push(q('Round',b.round));
+  L.push(q('Board',b.board));
+  L.push(q('West',b.playerW));
+  L.push(q('North',b.playerN));
+  L.push(q('East',b.playerE));
+  L.push(q('South',b.playerS));
   L.push(q('Dealer',b.auctionDealer||'N'));
   L.push(q('Vulnerable',b.vulnerable||'None'));
-  L.push(q('Deal',serializeDeal(b.hands)));
+  L.push(qOpt('Deal',serializeDeal(b.hands)));
   L.push(q('Scoring',b.scoring||'MP'));
-  L.push(q('Declarer',b.declarer||''));
-  L.push(q('Contract',b.contract||''));
-  L.push(q('Result',b.result==null?'':b.result));
-  if(b.description) L.push(q('Description',b.description));
+  L.push(q('Declarer',b.declarer));
+  L.push(q('Contract',b.contract));
+  // Result: "*" if play is incomplete/unknown, else the given value or "?"
+  const totalCards=(b.play||[]).reduce((n,t)=>n+t.filter(Boolean).length,0);
+  const resultVal=(b.result!=null&&b.result!=='')?b.result:(totalCards>0&&totalCards<52?'*':'?');
+  L.push(`[Result "${resultVal}"]`);
+  if(b.description) L.push(qOpt('Description',b.description));
   // Auction
   if(b.auction && b.auction.length){
     L.push(`[Auction "${b.auctionDealer||'N'}"]`);

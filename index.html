@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PBN Manager · Biedtrainer</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --felt:#1f3a2e; --felt-soft:#2d5240;
+  --paper:#faf7ef; --paper-deep:#f0ebdd; --paper-card:#fffdf7;
+  --ink:#23201a; --ink-soft:#4a4638; --ink-faint:#8a8472;
+  --line:#d8d0bd; --line-soft:#e8e1d0;
+  --gold:#b08d3f; --burgundy:#8b1a1a; --success:#2d6a4a;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:var(--paper);color:var(--ink);font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;}
+button{font-family:inherit;}
+a{color:var(--felt);}
+
+/* ── HEADER ── */
+.app-head{background:var(--felt);color:#fff;padding:14px 20px;display:flex;align-items:center;gap:14px;box-shadow:0 2px 12px -4px rgba(0,0,0,.4);}
+.app-head .mark{font-size:22px;letter-spacing:.02em;}
+.app-head h1{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:22px;margin:0;letter-spacing:.01em;}
+.app-head .sub{font-size:12px;color:rgba(255,255,255,.6);font-style:italic;margin-left:auto;}
+
+/* ── SOURCE BAR ── */
+.source-bar{background:var(--paper-card);border-bottom:1px solid var(--line);padding:12px 20px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+.btn{background:var(--felt);color:#fff;border:none;border-radius:3px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;letter-spacing:.01em;transition:background .15s;}
+.btn:hover{background:var(--felt-soft);}
+.btn:disabled{opacity:.5;cursor:default;}
+.btn.sec{background:transparent;color:var(--felt);border:1px solid var(--line);}
+.btn.sec:hover{background:var(--paper-deep);}
+.btn.gold{background:var(--gold);}
+.btn.gold:hover{background:#c79d47;}
+.src-sep{width:1px;height:26px;background:var(--line);margin:0 4px;}
+.src-lbl{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);}
+
+/* ── LAYOUT ── */
+.page{max-width:1280px;margin:0 auto;padding:18px 20px 120px;}
+.empty{max-width:560px;margin:60px auto;text-align:center;padding:0 20px;}
+.empty .big-mark{font-size:52px;color:var(--line);margin-bottom:14px;}
+.empty h2{font-family:'Cormorant Garamond',serif;font-weight:500;font-size:26px;color:var(--felt);margin:0 0 10px;}
+.empty p{color:var(--ink-soft);font-size:14px;line-height:1.6;}
+.grid{display:grid;grid-template-columns:290px 1fr 300px;gap:18px;align-items:start;}
+@media(max-width:1040px){.grid{grid-template-columns:1fr;}}
+.col-title{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--felt);margin:0 0 10px;padding-bottom:5px;border-bottom:1.5px solid var(--line);display:flex;justify-content:space-between;align-items:baseline;}
+.col-title .meta{font-family:'Inter';font-size:11px;font-weight:600;color:var(--ink-faint);letter-spacing:.03em;}
+
+/* ── DIAGRAM ── */
+.diagram{background:var(--felt);border-radius:5px;padding:12px;display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:auto auto auto;gap:7px;box-shadow:inset 0 0 24px rgba(0,0,0,.25);}
+.dia-hand{background:var(--paper-card);border-radius:3px;padding:8px 10px;font-size:13px;line-height:1.5;}
+.dia-hand.n{grid-column:2;grid-row:1;}
+.dia-hand.w{grid-column:1;grid-row:2;}
+.dia-hand.e{grid-column:3;grid-row:2;}
+.dia-hand.s{grid-column:2;grid-row:3;}
+.dia-center{grid-column:2;grid-row:2;display:flex;flex-direction:column;align-items:center;justify-content:center;color:rgba(255,255,255,.85);text-align:center;gap:2px;}
+.dia-center .ct-contract{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;}
+.dia-center .ct-decl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.6);}
+.hand-seat{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:3px;}
+.suit-line{display:flex;gap:6px;align-items:baseline;}
+.suit-sym{width:14px;display:inline-block;font-size:13px;text-align:center;}
+.suit-ranks{letter-spacing:.06em;font-variant-numeric:tabular-nums;}
+.suit-void{color:var(--ink-faint);}
+
+/* ── EDIT ROWS ── */
+.erow{display:grid;grid-template-columns:58px 62px 1fr 26px;gap:9px;align-items:start;padding:7px 9px;border:1px solid var(--line);border-radius:3px;background:var(--paper-card);margin-bottom:6px;}
+.erow.play{grid-template-columns:58px 62px 1fr;}
+.erow-seat{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-faint);padding-top:9px;}
+.erow-val{font-size:17px;font-weight:700;padding:5px 2px;cursor:pointer;text-align:center;border:1px dashed transparent;border-radius:3px;min-height:32px;line-height:1.3;transition:border-color .12s,background .12s;}
+.erow-val:hover{border-color:var(--gold);background:var(--paper-deep);}
+.erow-com{width:100%;min-height:34px;padding:6px 8px;border:1px solid var(--line);border-radius:2px;font-size:13px;font-family:'Inter';color:var(--ink);background:var(--paper);resize:vertical;line-height:1.45;}
+.erow-com:focus{outline:none;border-color:var(--felt);background:#fff;}
+.erow-del{background:none;border:none;color:var(--ink-faint);cursor:pointer;font-size:15px;padding:6px 0;align-self:start;line-height:1;}
+.erow-del:hover{color:var(--burgundy);}
+.trick{border:1px solid var(--line-soft);border-radius:3px;padding:7px;margin-bottom:9px;background:var(--paper);}
+.trick-hdr{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:5px;display:flex;justify-content:space-between;}
+.add-row{margin-top:4px;}
+
+/* ── PICKER MODAL ── */
+.overlay{position:fixed;inset:0;background:rgba(31,58,46,.5);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px;backdrop-filter:blur(2px);}
+.modal{background:var(--paper-card);border:1px solid var(--gold);border-radius:5px;padding:18px;max-width:430px;width:100%;box-shadow:0 24px 60px -24px rgba(0,0,0,.55);}
+.modal-title{font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:600;color:var(--felt);}
+.modal-sub{font-size:12px;color:var(--ink-faint);font-style:italic;margin:2px 0 12px;}
+.bidkbd{display:flex;flex-direction:column;gap:5px;}
+.bkrow{display:flex;gap:5px;}
+.bkbtn{flex:1;padding:9px 4px;border:1.5px solid var(--line);border-radius:4px;background:#fff;cursor:pointer;font-size:15px;font-weight:700;min-width:0;transition:border-color .12s,background .12s;}
+.bkbtn:hover:not(:disabled){border-color:var(--felt);background:var(--paper-deep);}
+.bkbtn:disabled{opacity:.32;cursor:default;background:var(--paper);}
+.bk-special{display:flex;gap:5px;margin-top:3px;}
+.cardpick{display:flex;flex-direction:column;gap:7px;}
+.cp-suit{display:flex;align-items:center;gap:8px;min-height:32px;}
+.cp-sym{font-size:17px;font-weight:700;width:22px;text-align:center;}
+.cp-cards{display:flex;flex-wrap:wrap;gap:5px;}
+.cp-card{padding:7px 10px;border:1.5px solid var(--line);border-radius:4px;background:#fff;cursor:pointer;font-size:15px;font-weight:700;min-width:36px;text-align:center;transition:border-color .12s,background .12s;}
+.cp-card:hover{border-color:var(--felt);background:var(--paper-deep);}
+.cp-empty{font-size:12px;color:var(--ink-faint);font-style:italic;}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;}
+
+/* ── DRIVE BROWSER ── */
+.drive-list{max-height:400px;overflow-y:auto;border:1px solid var(--line);border-radius:3px;margin-top:10px;}
+.drive-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--line-soft);cursor:pointer;font-size:14px;}
+.drive-item:last-child{border-bottom:none;}
+.drive-item:hover{background:var(--paper-deep);}
+.drive-item .di-icon{font-size:16px;width:20px;text-align:center;}
+.drive-item.folder .di-icon{color:var(--gold);}
+.drive-item.file .di-icon{color:var(--felt);}
+.drive-crumbs{font-size:12px;color:var(--ink-faint);margin-top:4px;display:flex;gap:5px;flex-wrap:wrap;align-items:center;}
+.drive-crumbs a{cursor:pointer;text-decoration:underline;}
+
+/* ── FILENAME + SAVE BAR ── */
+.savebar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--paper-card);border:1px solid var(--line);border-radius:4px;padding:12px 14px;margin-bottom:16px;}
+.fn-input{flex:1;min-width:200px;padding:9px 11px;border:1px solid var(--line);border-radius:3px;font-size:14px;font-family:'Inter';color:var(--ink);background:#fff;}
+.fn-input:focus{outline:none;border-color:var(--felt);}
+.status{padding:10px 14px;border-radius:3px;font-size:13px;margin-bottom:14px;}
+.status.ok{background:#eef6f0;border:1px solid #cfe6d6;color:var(--success);}
+.status.err{background:#fbeeee;border:1px solid #e6cfcf;color:var(--burgundy);}
+.status.info{background:#f6f2e8;border:1px solid var(--line);color:var(--ink-soft);}
+.spinner{display:inline-block;width:13px;height:13px;border:2px solid var(--line);border-top-color:var(--felt);border-radius:50%;animation:spin .7s linear infinite;vertical-align:-2px;margin-right:6px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.board-nav{display:flex;gap:6px;align-items:center;}
+.board-nav select{padding:7px 10px;border:1px solid var(--line);border-radius:3px;font-size:13px;font-family:'Inter';background:#fff;color:var(--ink);}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="env,react">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ═══ CONSTANTS ═══
+const SS = { S:'♠', H:'♥', D:'♦', C:'♣' };
+const SC = { S:'#1a1a2e', H:'#8b1a1a', D:'#8b1a1a', C:'#1a1a2e' };
+const RD = r => r === 'T' ? '10' : r;
+const DNL = { N:'Noord', W:'West', E:'Oost', S:'Zuid' };
+const SUIT_ORDER = ['S','H','D','C'];
+const RANK_ORDER = 'AKQJT98765432';
+const nextDir = d => ({ N:'E', E:'S', S:'W', W:'N' }[d]);
+const getLHO = d => ({ N:'E', E:'S', S:'W', W:'N' }[d]);
+function seatAt(starter, i){ let d=starter; for(let k=0;k<i;k++) d=nextDir(d); return d; }
+function cardDisp(code){ if(!code||code.length<2) return ''; return SS[code[0]]+RD(code.slice(1)); }
+function bidDisp(bid){
+  if(!bid) return {text:'—',col:'#ccc'};
+  const b=bid.replace('Pass','Pas').replace('Dbl','X').replace('Rdbl','XX');
+  if(b==='Pas') return {text:'Pas',col:'#555'};
+  if(b==='X') return {text:'X',col:'#8b1a1a'};
+  if(b==='XX') return {text:'XX',col:'#8b1a1a'};
+  const m=b.match(/^(\d)([SHDCN]T?)$/i);
+  if(!m) return {text:b,col:'#555'};
+  const s=m[2].toUpperCase(); const sym=s==='NT'?'SA':SS[s];
+  return {text:m[1]+sym, col:(s==='H'||s==='D')?'#8b1a1a':'#1a1a2e'};
+}
+function parseContract(c){
+  if(!c) return {disp:'—'};
+  const m=c.match(/^(\d)([SHDCN]T?)(X{0,2})$/i);
+  if(!m) return {disp:c};
+  const s=m[2].toUpperCase();
+  return {disp:m[1]+(s==='NT'?'SA':SS[s])+(m[3]||'')};
+}
+
+// ═══ PBN PARSER (inline {} comments; NWES input tolerated, NESW output) ═══
+function parsePbn(text){
+  const boards=[];
+  const parts=text.split(/(?=\[Board\s+")/).filter(p=>p.trim());
+  for(const part of parts){
+    const tags={}; const tr=/\[(\w+)\s+"([^"]*)"\]/g; let m;
+    while((m=tr.exec(part))!==null) tags[m[1]]=m[2];
+    if(!tags.Deal) continue;
+    // Auction with inline comments
+    let auction=[], auctionDealer=tags.Dealer||'W', auctionComments={};
+    const am=part.match(/\[Auction\s+"([NWES])"\]([\s\S]*?)(?=\n\[|\*\s*\n|\*\s*$)/);
+    if(am){
+      auctionDealer=am[1];
+      const tok=am[2].match(/\{[^}]*\}|\S+/g)||[]; let bi=-1;
+      for(const t of tok){
+        if(t==='*') continue;
+        if(t[0]==='{'){ if(bi>=0) auctionComments[bi]=(auctionComments[bi]?auctionComments[bi]+' ':'')+t.slice(1,-1).trim(); }
+        else { auction.push(t.replace('Pass','Pas').replace('Dbl','X').replace('Rdbl','XX')); bi++; }
+      }
+    }
+    // Play with inline comments (per trick line)
+    const playComments={}; let play=[], playLeader=tags.Declarer?getLHO(tags.Declarer):'W';
+    const pm=part.match(/\[Play\s+"([NWES])"\]([\s\S]*?)(?=\n\[|\*\s*\n|\*\s*$)/);
+    if(pm){
+      playLeader=pm[1];
+      const lines=pm[2].split('\n'); let ti=0;
+      for(let i=0;i<lines.length;i++){
+        const cards=lines[i].replace(/\{[^}]*\}/g,'').trim().split(/\s+/).filter(c=>/^[SHDC][2-9AKQJT]$/i.test(c));
+        if(cards.length>=1 && cards.length<=4 && lines[i].match(/[SHDC][2-9AKQJT]/i)){
+          play.push(cards.map(c=>c.toUpperCase()));
+          const cm=lines[i].match(/\{([^}]*)\}/);
+          if(cm) playComments[ti]=cm[1].trim();
+          ti++;
+        }
+      }
+    }
+    // Deal — read starter direction, fill clockwise
+    const dm=tags.Deal.match(/^([NWES]):(\S+)\s+(\S+)\s+(\S+)\s+(\S+)$/);
+    let hands={N:{S:[],H:[],D:[],C:[]},W:{S:[],H:[],D:[],C:[]},E:{S:[],H:[],D:[],C:[]},S:{S:[],H:[],D:[],C:[]}};
+    if(dm){
+      let d=dm[1];
+      [dm[2],dm[3],dm[4],dm[5]].forEach(hs=>{
+        hs.split('.').forEach((s,j)=>{ hands[d][SUIT_ORDER[j]]=s==='-'?[]:s.toUpperCase().split(''); });
+        d=nextDir(d);
+      });
+    }
+    boards.push({
+      board:tags.Board||'?', event:tags.Event||'', site:tags.Site||'', date:tags.Date||'',
+      playerN:tags.North||'', playerE:tags.East||'', playerS:tags.South||'', playerW:tags.West||'',
+      scoring:tags.Scoring||'MP', result:tags.Result||'',
+      hands, declarer:tags.Declarer||'S', contract:tags.Contract||'', vulnerable:tags.Vulnerable||'None',
+      auction, auctionDealer, auctionComments, play, playLeader, playComments,
+      description:tags.Description||'',
+    });
+  }
+  return boards;
+}
+
+// ═══ PBN SERIALIZER (NESW deal, inline {} comments) ═══
+function serializeDeal(hands){
+  const seatStr=dir=>SUIT_ORDER.map(s=>{
+    const cards=[...(hands[dir]?.[s]||[])].sort((a,b)=>RANK_ORDER.indexOf(a)-RANK_ORDER.indexOf(b));
+    return cards.length?cards.join(''):'-';
+  }).join('.');
+  return 'N:'+['N','E','S','W'].map(seatStr).join(' ');
+}
+function serializeBoard(b){
+  const q=(k,v)=>`[${k} "${v==null?'':v}"]`;
+  const L=[];
+  L.push(q('Event',b.event||''));
+  if(b.site) L.push(q('Site',b.site));
+  if(b.date) L.push(q('Date',b.date));
+  L.push(q('Board',b.board||'?'));
+  L.push(q('West',b.playerW||''));
+  L.push(q('North',b.playerN||''));
+  L.push(q('East',b.playerE||''));
+  L.push(q('South',b.playerS||''));
+  L.push(q('Dealer',b.auctionDealer||'N'));
+  L.push(q('Vulnerable',b.vulnerable||'None'));
+  L.push(q('Deal',serializeDeal(b.hands)));
+  L.push(q('Scoring',b.scoring||'MP'));
+  L.push(q('Declarer',b.declarer||''));
+  L.push(q('Contract',b.contract||''));
+  L.push(q('Result',b.result==null?'':b.result));
+  if(b.description) L.push(q('Description',b.description));
+  // Auction
+  if(b.auction && b.auction.length){
+    L.push(`[Auction "${b.auctionDealer||'N'}"]`);
+    const toks=[];
+    b.auction.forEach((bid,i)=>{
+      toks.push(bid.replace('Pas','Pass'));
+      const c=b.auctionComments?.[i];
+      if(c && c.trim()) toks.push(`{ ${c.trim()} }`);
+    });
+    let line=[], count=0;
+    const flush=()=>{ if(line.length){L.push(line.join(' ')); line=[]; count=0;} };
+    toks.forEach(t=>{ line.push(t); if(t[0]!=='{'){ count++; if(count>=4) flush(); } });
+    flush();
+  }
+  // Play
+  if(b.play && b.play.length){
+    L.push(`[Play "${b.playLeader||getLHO(b.declarer)}"]`);
+    b.play.forEach((trick,ti)=>{
+      let line=trick.join(' ');
+      const c=b.playComments?.[ti];
+      if(c && c.trim()) line+=` { ${c.trim()} }`;
+      L.push(line);
+    });
+    L.push('*');
+  }
+  return L.join('\n');
+}
+function serializePbn(boards){
+  return `% PBN 2.1\n% Biedtrainer PBN Manager\n\n`+boards.map(serializeBoard).join('\n\n')+'\n';
+}
+
+// ═══ BID / CARD LEGALITY ═══
+function bidRank(bid){
+  const order=['C','D','H','S','NT'];
+  const m=(bid||'').match(/^(\d)([SHDCN]T?)$/i);
+  if(!m) return -1;
+  const s=m[2].toUpperCase()==='N'?'NT':m[2].toUpperCase();
+  return (parseInt(m[1])-1)*5+order.indexOf(s);
+}
+function auctionState(bids){
+  let lastLevel=-1,lastLevelIdx=-1,dbl=0;
+  bids.forEach((b,i)=>{
+    const bb=(b||'').replace('Pass','Pas');
+    if(/^\d/.test(bb)){ lastLevel=bidRank(bb); lastLevelIdx=i; dbl=0; }
+    else if(bb==='X') dbl=1;
+    else if(bb==='XX') dbl=2;
+  });
+  return {lastLevel,lastLevelIdx,dbl};
+}
+function isLegalBid(priorBids,bid,idx){
+  const st=auctionState(priorBids);
+  const b=(bid||'').replace('Pass','Pas');
+  if(b==='Pas') return true;
+  if(b==='X'){ if(st.lastLevel<0||st.dbl>0) return false; return ((idx-st.lastLevelIdx)%2)===1; }
+  if(b==='XX'){ if(st.dbl!==1) return false; return ((idx-st.lastLevelIdx)%2)===0; }
+  return bidRank(b)>st.lastLevel;
+}
+function legalCardsFor(hands,play,trickIdx,seatIdx,leader){
+  const seat=seatAt(leader,(trickIdx*4+seatIdx));
+  const remaining={S:[...(hands[seat]?.S||[])],H:[...(hands[seat]?.H||[])],D:[...(hands[seat]?.D||[])],C:[...(hands[seat]?.C||[])]};
+  for(let t=0;t<play.length;t++){
+    for(let p=0;p<(play[t]||[]).length;p++){
+      const s2=seatAt(leader,t*4+p); const card=play[t][p];
+      if(s2===seat && card){
+        const arr=remaining[card[0]]; const ix=arr.indexOf(card[1]);
+        if(ix>=0 && !(t===trickIdx && p===seatIdx)) arr.splice(ix,1);
+      }
+    }
+  }
+  const ledCard=seatIdx>0?(play[trickIdx]||[])[0]:null;
+  const ledSuit=ledCard?ledCard[0]:null;
+  if(ledSuit && remaining[ledSuit] && remaining[ledSuit].length) return {[ledSuit]:remaining[ledSuit]};
+  return remaining;
+}
+
+// ═══ COMPONENTS ═══
+function HandView({ seat, hand }){
+  return (
+    <div>
+      <div className="hand-seat">{DNL[seat]}</div>
+      {SUIT_ORDER.map(s=>{
+        const ranks=[...(hand?.[s]||[])].sort((a,b)=>RANK_ORDER.indexOf(a)-RANK_ORDER.indexOf(b));
+        return (
+          <div key={s} className="suit-line">
+            <span className="suit-sym" style={{color:SC[s]}}>{SS[s]}</span>
+            <span className="suit-ranks">{ranks.length?ranks.map(RD).join(' '):<span className="suit-void">—</span>}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function BidPicker({ priorBids, idx, onPick, onClose }){
+  const suits=['C','D','H','S','NT'];
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="modal" onClick={e=>e.stopPropagation()}>
+        <div className="modal-title">Kies een bod</div>
+        <div className="modal-sub">Alleen legale biedingen zijn actief</div>
+        <div className="bidkbd">
+          {[1,2,3,4,5,6,7].map(lv=>(
+            <div key={lv} className="bkrow">
+              {suits.map(s=>{
+                const bid=`${lv}${s}`, off=!isLegalBid(priorBids,bid,idx);
+                const sym=s==='NT'?'SA':SS[s];
+                const col=(s==='H'||s==='D')?'#8b1a1a':'#1a1a2e';
+                return <button key={s} className="bkbtn" style={{color:off?'#bbb':col}} disabled={off} onClick={()=>onPick(bid)}>{lv}{sym}</button>;
+              })}
+            </div>
+          ))}
+          <div className="bk-special">
+            <button className="bkbtn" style={{color:'#555'}} disabled={!isLegalBid(priorBids,'Pas',idx)} onClick={()=>onPick('Pas')}>Pas</button>
+            <button className="bkbtn" style={{color:'#8b1a1a'}} disabled={!isLegalBid(priorBids,'X',idx)} onClick={()=>onPick('X')}>Doublet</button>
+            <button className="bkbtn" style={{color:'#8b1a1a'}} disabled={!isLegalBid(priorBids,'XX',idx)} onClick={()=>onPick('XX')}>Redoublet</button>
+          </div>
+        </div>
+        <div className="modal-actions"><button className="btn sec" onClick={onClose}>Annuleren</button></div>
+      </div>
+    </div>
+  );
+}
+
+function CardPicker({ hands, play, trickIdx, seatIdx, leader, onPick, onClose }){
+  const legal=legalCardsFor(hands,play,trickIdx,seatIdx,leader);
+  const seat=seatAt(leader,trickIdx*4+seatIdx);
+  const any=SUIT_ORDER.some(s=>(legal[s]||[]).length);
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="modal" onClick={e=>e.stopPropagation()}>
+        <div className="modal-title">Kaart voor {DNL[seat]}</div>
+        <div className="modal-sub">Alleen kaarten uit de hand · bekennen verplicht</div>
+        <div className="cardpick">
+          {!any && <div className="cp-empty">Geen kaarten meer beschikbaar voor deze hand.</div>}
+          {SUIT_ORDER.map(s=>{
+            const ranks=[...(legal[s]||[])].sort((a,b)=>RANK_ORDER.indexOf(a)-RANK_ORDER.indexOf(b));
+            if(!ranks.length) return null;
+            return (
+              <div key={s} className="cp-suit">
+                <span className="cp-sym" style={{color:SC[s]}}>{SS[s]}</span>
+                <div className="cp-cards">
+                  {ranks.map(r=><button key={r} className="cp-card" style={{color:SC[s]}} onClick={()=>onPick(s+r)}>{RD(r)}</button>)}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="modal-actions"><button className="btn sec" onClick={onClose}>Annuleren</button></div>
+      </div>
+    </div>
+  );
+}
+
+// ═══ GOOGLE DRIVE ═══
+const ROOT_FOLDER_ID = '1JdY60Aro4UvR8RqZwQi8q1IYhSI_nUpf';
+
+function DriveBrowser({ token, onLoadFile, onClose }){
+  const [stack,setStack]=useState([{id:ROOT_FOLDER_ID,name:'Bridge (root)'}]);
+  const [items,setItems]=useState([]);
+  const [loading,setLoading]=useState(false);
+  const [err,setErr]=useState(null);
+  const current=stack[stack.length-1];
+
+  const list=useCallback(async folderId=>{
+    setLoading(true); setErr(null);
+    try{
+      const q=encodeURIComponent(`'${folderId}' in parents and trashed=false`);
+      const url=`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,mimeType)&pageSize=200&orderBy=folder,name`;
+      const r=await fetch(url,{headers:{Authorization:`Bearer ${token}`}});
+      if(!r.ok) throw new Error(`Drive gaf status ${r.status}`);
+      const d=await r.json();
+      const files=(d.files||[]).filter(f=>
+        f.mimeType==='application/vnd.google-apps.folder' || /\.pbn$/i.test(f.name)
+      );
+      setItems(files);
+    }catch(e){ setErr(e.message); }
+    finally{ setLoading(false); }
+  },[token]);
+
+  useEffect(()=>{ list(current.id); },[current.id,list]);
+
+  async function openFile(f){
+    setLoading(true); setErr(null);
+    try{
+      const r=await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`,{headers:{Authorization:`Bearer ${token}`}});
+      if(!r.ok) throw new Error(`Download mislukt (${r.status})`);
+      const text=await r.text();
+      onLoadFile(text,f.name);
+    }catch(e){ setErr(e.message); setLoading(false); }
+  }
+
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="modal" style={{maxWidth:520}} onClick={e=>e.stopPropagation()}>
+        <div className="modal-title">Kies een PBN uit Google Drive</div>
+        <div className="drive-crumbs">
+          {stack.map((s,i)=>(
+            <span key={s.id}>
+              {i>0 && <span> / </span>}
+              <a onClick={()=>setStack(stack.slice(0,i+1))}>{s.name}</a>
+            </span>
+          ))}
+        </div>
+        {err && <div className="status err" style={{marginTop:10}}>{err}</div>}
+        <div className="drive-list">
+          {loading && <div className="drive-item"><span className="spinner"></span>Laden…</div>}
+          {!loading && !items.length && <div className="drive-item" style={{color:'var(--ink-faint)',fontStyle:'italic'}}>Geen mappen of PBN-bestanden hier.</div>}
+          {!loading && items.map(f=>{
+            const isFolder=f.mimeType==='application/vnd.google-apps.folder';
+            return (
+              <div key={f.id} className={`drive-item ${isFolder?'folder':'file'}`}
+                onClick={()=> isFolder ? setStack([...stack,{id:f.id,name:f.name}]) : openFile(f)}>
+                <span className="di-icon">{isFolder?'📁':'♠'}</span>
+                <span>{f.name}</span>
+              </div>
+            );
+          })}
+        </div>
+        <div className="modal-actions"><button className="btn sec" onClick={onClose}>Sluiten</button></div>
+      </div>
+    </div>
+  );
+}
+
+async function ensureFolder(name,parentId,token){
+  const q=encodeURIComponent(`name='${name}' and '${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+  const r=await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)`,{headers:{Authorization:`Bearer ${token}`}});
+  const d=await r.json();
+  if(d.files && d.files.length) return d.files[0].id;
+  const cr=await fetch('https://www.googleapis.com/drive/v3/files?fields=id',{
+    method:'POST', headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+    body:JSON.stringify({name,mimeType:'application/vnd.google-apps.folder',parents:[parentId]})
+  });
+  return (await cr.json()).id;
+}
+async function uploadToDrive(name,content,folderId,token){
+  const meta={name,parents:[folderId]};
+  const boundary='-------pbnmgr'+Date.now();
+  const body=
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n`+
+    JSON.stringify(meta)+
+    `\r\n--${boundary}\r\nContent-Type: application/x-pbn\r\n\r\n`+
+    content+
+    `\r\n--${boundary}--`;
+  const r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink',{
+    method:'POST',
+    headers:{Authorization:`Bearer ${token}`,'Content-Type':`multipart/related; boundary=${boundary}`},
+    body
+  });
+  if(!r.ok) throw new Error(`Upload gaf status ${r.status}`);
+  return r.json();
+}
+
+// ═══ MAIN APP ═══
+function App(){
+  const [boards,setBoards]=useState([]);
+  const [active,setActive]=useState(0);
+  const [draft,setDraft]=useState(null);
+  const [fileName,setFileName]=useState('bewerkt.pbn');
+  const [bidPicker,setBidPicker]=useState(null);
+  const [cardPicker,setCardPicker]=useState(null);
+  const [saveState,setSaveState]=useState(null);
+  const [saving,setSaving]=useState(false);
+  const [token,setToken]=useState(null);
+  const [showDrive,setShowDrive]=useState(false);
+  const [clientId,setClientId]=useState(()=>localStorage.getItem('pbnmgr_clientId')||'');
+  const [gisReady,setGisReady]=useState(false);
+  const [needClientId,setNeedClientId]=useState(false);
+  const tokenClientRef=useRef(null);
+  const fileInputRef=useRef(null);
+  const pendingDrive=useRef(false);
+
+  // Load Google Identity Services script
+  useEffect(()=>{
+    if(window.google?.accounts?.oauth2){ setGisReady(true); return; }
+    const s=document.createElement('script');
+    s.src='https://accounts.google.com/gsi/client'; s.async=true; s.defer=true;
+    s.onload=()=>setGisReady(true);
+    document.head.appendChild(s);
+  },[]);
+
+  useEffect(()=>{
+    if(!gisReady || !clientId) return;
+    try{
+      tokenClientRef.current=window.google.accounts.oauth2.initTokenClient({
+        client_id:clientId,
+        scope:'https://www.googleapis.com/auth/drive',
+        callback:resp=>{
+          if(resp.access_token){
+            setToken(resp.access_token);
+            if(pendingDrive.current){ pendingDrive.current=false; setShowDrive(true); }
+          }
+        }
+      });
+    }catch(e){ /* invalid client id */ }
+  },[gisReady,clientId]);
+
+  // Sync draft when active board changes
+  useEffect(()=>{
+    if(!boards.length){ setDraft(null); return; }
+    const b=boards[active];
+    setDraft(JSON.parse(JSON.stringify(b)));
+    setSaveState(null);
+  },[active,boards]);
+
+  function loadFromText(text,name){
+    const parsed=parsePbn(text);
+    if(!parsed.length){ setSaveState({type:'err',msg:'Geen geldige PBN-spellen gevonden in dit bestand.'}); return; }
+    setBoards(parsed); setActive(0);
+    const base=(name||'bewerkt.pbn').replace(/\.pbn$/i,'');
+    setFileName(`${base}_bewerkt.pbn`);
+    setShowDrive(false);
+    setSaveState({type:'info',msg:`${parsed.length} spel${parsed.length>1?'len':''} geladen uit ${name||'bestand'}.`});
+  }
+
+  // ── Local file ──
+  function pickLocal(){ fileInputRef.current?.click(); }
+  function onLocalFile(e){
+    const f=e.target.files?.[0]; if(!f) return;
+    const rd=new FileReader();
+    rd.onload=()=>loadFromText(rd.result,f.name);
+    rd.readAsText(f);
+    e.target.value='';
+  }
+  function downloadLocal(){
+    if(!draft) return;
+    const name=fileName.endsWith('.pbn')?fileName:fileName+'.pbn';
+    const blob=new Blob([serializePbn([draft])],{type:'application/x-pbn'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=name; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // ── Drive ──
+  function connectDrive(){
+    if(!clientId){ setNeedClientId(true); return; }
+    if(token){ setShowDrive(true); return; }
+    pendingDrive.current=true;
+    tokenClientRef.current?.requestAccessToken({prompt:'consent'});
+  }
+  async function saveToDrive(){
+    if(!draft) return;
+    if(!token){ pendingDrive.current=false; tokenClientRef.current?.requestAccessToken({prompt:'consent'}); return; }
+    setSaving(true); setSaveState(null);
+    try{
+      const name=fileName.endsWith('.pbn')?fileName:fileName+'.pbn';
+      const folderId=await ensureFolder('Bewerkt',ROOT_FOLDER_ID,token);
+      const res=await uploadToDrive(name,serializePbn([draft]),folderId,token);
+      setBoards(bs=>bs.map((b,i)=>i===active?draft:b));
+      setSaveState({type:'ok',msg:`${name} opgeslagen in map “Bewerkt”.`,link:res.webViewLink});
+    }catch(e){ setSaveState({type:'err',msg:'Opslaan naar Drive mislukt: '+e.message}); }
+    finally{ setSaving(false); }
+  }
+  function saveClientId(){
+    localStorage.setItem('pbnmgr_clientId',clientId.trim());
+    setNeedClientId(false);
+  }
+
+  // ── Draft mutators ──
+  const mutate=fn=>setDraft(d=>{ const n=JSON.parse(JSON.stringify(d)); fn(n); return n; });
+  const setBid=(idx,bid)=>mutate(d=>{
+    d.auction[idx]=bid; d.auction=d.auction.slice(0,idx+1);
+    Object.keys(d.auctionComments||{}).forEach(k=>{ if(+k>idx) delete d.auctionComments[k]; });
+  });
+  const addBid=()=>mutate(d=>{ d.auction.push('Pas'); });
+  const delBid=idx=>mutate(d=>{
+    d.auction.splice(idx,1);
+    const nc={}; Object.entries(d.auctionComments||{}).forEach(([k,v])=>{const ki=+k; if(ki<idx)nc[ki]=v; else if(ki>idx)nc[ki-1]=v;}); d.auctionComments=nc;
+  });
+  const setBidCom=(idx,txt)=>mutate(d=>{ d.auctionComments=d.auctionComments||{}; if(txt)d.auctionComments[idx]=txt; else delete d.auctionComments[idx]; });
+  const setCard=(ti,si,card)=>mutate(d=>{ if(!d.play[ti])d.play[ti]=[]; d.play[ti][si]=card; });
+  const setPlayCom=(ti,txt)=>mutate(d=>{ d.playComments=d.playComments||{}; if(txt)d.playComments[ti]=txt; else delete d.playComments[ti]; });
+  const addTrick=()=>mutate(d=>{ d.play.push([]); });
+  const delTrick=ti=>mutate(d=>{
+    d.play.splice(ti,1);
+    const nc={}; Object.entries(d.playComments||{}).forEach(([k,v])=>{const ki=+k; if(ki<ti)nc[ki]=v; else if(ki>ti)nc[ki-1]=v;}); d.playComments=nc;
+  });
+
+  const dealer=draft?.auctionDealer||'N';
+  const leader=draft?draft.playLeader||getLHO(draft.declarer):'W';
+
+  return (
+    <div>
+      <header className="app-head">
+        <span className="mark">♠♥♦♣</span>
+        <h1>PBN Manager</h1>
+        <span className="sub">Biedtrainer · biedingen & uitspelen bewerken</span>
+      </header>
+
+      <div className="source-bar">
+        <span className="src-lbl">Openen</span>
+        <button className="btn" onClick={connectDrive}>Google Drive…</button>
+        <button className="btn sec" onClick={pickLocal}>Bestand van computer…</button>
+        <input ref={fileInputRef} type="file" accept=".pbn" style={{display:'none'}} onChange={onLocalFile}/>
+        {boards.length>1 && (
+          <>
+            <span className="src-sep"></span>
+            <div className="board-nav">
+              <span className="src-lbl">Spel</span>
+              <select value={active} onChange={e=>setActive(+e.target.value)}>
+                {boards.map((b,i)=><option key={i} value={i}>#{b.board} — {b.contract||'geen contract'}</option>)}
+              </select>
+            </div>
+          </>
+        )}
+      </div>
+
+      {needClientId && (
+        <div className="overlay" onClick={()=>setNeedClientId(false)}>
+          <div className="modal" onClick={e=>e.stopPropagation()}>
+            <div className="modal-title">Google Drive verbinden</div>
+            <div className="modal-sub">Eenmalig: plak je OAuth Client ID (Google Cloud Console). De app onthoudt hem lokaal.</div>
+            <input className="fn-input" style={{width:'100%'}} placeholder="xxxxx.apps.googleusercontent.com" value={clientId} onChange={e=>setClientId(e.target.value)}/>
+            <p style={{fontSize:12,color:'var(--ink-faint)',lineHeight:1.5,marginTop:10}}>
+              Zorg dat bij “Authorized JavaScript origins” de URL staat waar je deze app opent
+              (bijv. je GitHub Pages-adres, of <code>http://localhost</code> voor lokaal testen).
+            </p>
+            <div className="modal-actions">
+              <button className="btn sec" onClick={()=>setNeedClientId(false)}>Annuleren</button>
+              <button className="btn" disabled={!clientId.trim()} onClick={saveClientId}>Opslaan</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDrive && token && (
+        <DriveBrowser token={token} onLoadFile={loadFromText} onClose={()=>setShowDrive(false)}/>
+      )}
+
+      {!draft ? (
+        <div className="empty">
+          <div className="big-mark">♠ ♥ ♦ ♣</div>
+          <h2>Open een PBN-bestand om te beginnen</h2>
+          <p>Kies een <strong>.pbn</strong> uit je Google Drive of van je computer. Daarna kun je hier de biedingen, gespeelde kaarten en commentaren bewerken en het geheel als nieuwe PBN opslaan — met een naam die je zelf kiest.</p>
+        </div>
+      ) : (
+        <div className="page">
+          <div className="savebar">
+            <span className="src-lbl">Bestandsnaam</span>
+            <input className="fn-input" value={fileName} onChange={e=>setFileName(e.target.value)}/>
+            <button className="btn" onClick={saveToDrive} disabled={saving}>
+              {saving && <span className="spinner"></span>}Opslaan naar Drive
+            </button>
+            <button className="btn gold" onClick={downloadLocal}>Download</button>
+          </div>
+
+          {saveState && (
+            <div className={`status ${saveState.type}`}>
+              {saveState.msg} {saveState.link && <a href={saveState.link} target="_blank" rel="noreferrer">Openen ↗</a>}
+            </div>
+          )}
+
+          <div className="grid">
+            {/* LEFT — hands */}
+            <div>
+              <div className="col-title">Handen <span className="meta">spel #{draft.board}</span></div>
+              <div className="diagram">
+                {['N','W','E','S'].map(dir=>(
+                  <div key={dir} className={`dia-hand ${dir.toLowerCase()}`}><HandView seat={dir} hand={draft.hands[dir]}/></div>
+                ))}
+                <div className="dia-center">
+                  <div className="ct-contract">{parseContract(draft.contract).disp}</div>
+                  {draft.declarer && <div className="ct-decl">door {DNL[draft.declarer]}</div>}
+                </div>
+              </div>
+            </div>
+
+            {/* MIDDLE — bidding */}
+            <div>
+              <div className="col-title">Biedingen <span className="meta">deler {DNL[dealer]}</span></div>
+              {draft.auction.map((bid,i)=>{
+                const d=bidDisp(bid);
+                return (
+                  <div key={i} className="erow">
+                    <div className="erow-seat">{DNL[seatAt(dealer,i)]}</div>
+                    <div className="erow-val" style={{color:d.col}} onClick={()=>setBidPicker({idx:i})} title="Klik om te wijzigen">{d.text}</div>
+                    <textarea className="erow-com" placeholder="Commentaar…" value={(draft.auctionComments&&draft.auctionComments[i])||''} onChange={e=>setBidCom(i,e.target.value)}/>
+                    <button className="erow-del" onClick={()=>delBid(i)} title="Verwijder">✕</button>
+                  </div>
+                );
+              })}
+              <button className="btn sec add-row" onClick={addBid}>+ Bod ({DNL[seatAt(dealer,draft.auction.length)]})</button>
+            </div>
+
+            {/* RIGHT — play */}
+            <div>
+              <div className="col-title">Gespeelde kaarten <span className="meta">uitkomst {DNL[leader]}</span></div>
+              {(draft.play||[]).map((trick,ti)=>(
+                <div key={ti} className="trick">
+                  <div className="trick-hdr"><span>Slag {ti+1}</span><button className="erow-del" style={{padding:0}} onClick={()=>delTrick(ti)} title="Verwijder slag">✕</button></div>
+                  {[0,1,2,3].map(si=>{
+                    const card=trick[si];
+                    return (
+                      <div key={si} className="erow play" style={{marginBottom:4}}>
+                        <div className="erow-seat">{DNL[seatAt(leader,ti*4+si)]}</div>
+                        <div className="erow-val" style={{color:card?SC[card[0]]:'#ccc'}} onClick={()=>setCardPicker({trickIdx:ti,seatIdx:si})} title="Klik om kaart te kiezen">{card?cardDisp(card):'—'}</div>
+                        {si===0
+                          ? <textarea className="erow-com" placeholder="Commentaar bij slag…" value={(draft.playComments&&draft.playComments[ti])||''} onChange={e=>setPlayCom(ti,e.target.value)}/>
+                          : <div/>}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+              <button className="btn sec add-row" onClick={addTrick}>+ Slag</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {bidPicker && (
+        <BidPicker priorBids={draft.auction.slice(0,bidPicker.idx)} idx={bidPicker.idx}
+          onPick={bid=>{ setBid(bidPicker.idx,bid); setBidPicker(null); }} onClose={()=>setBidPicker(null)}/>
+      )}
+      {cardPicker && (
+        <CardPicker hands={draft.hands} play={draft.play} trickIdx={cardPicker.trickIdx} seatIdx={cardPicker.seatIdx} leader={leader}
+          onPick={card=>{ setCard(cardPicker.trickIdx,cardPicker.seatIdx,card); setCardPicker(null); }} onClose={()=>setCardPicker(null)}/>
+      )}
+    </div>
+  );
+}
+
+const root=ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App/>);
+</script>
+</body>
+</html>

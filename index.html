@@ -62,8 +62,8 @@ a{color:var(--felt);}
 .dia-center .ct-decl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.6);}
 .hand-seat{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:3px;}
 .suit-line{display:flex;gap:6px;align-items:baseline;}
-.suit-sym{width:14px;display:inline-block;font-size:13px;text-align:center;}
-.suit-ranks{letter-spacing:.06em;font-variant-numeric:tabular-nums;}
+.suit-sym{width:14px;flex:none;display:inline-block;font-size:13px;text-align:center;}
+.suit-ranks{letter-spacing:.08em;font-variant-numeric:tabular-nums;white-space:nowrap;}
 .suit-void{color:var(--ink-faint);}
 
 /* ── EDIT ROWS ── */
@@ -196,15 +196,30 @@ function parsePbn(text){
         }
       }
     }
-    // Deal — read starter direction, fill clockwise
-    const dm=tags.Deal.match(/^([NWES]):(\S+)\s+(\S+)\s+(\S+)\s+(\S+)$/);
+    // Deal — read starter direction, fill clockwise.
+    // Tolerant: accept 1–4 hands, extra whitespace, and a blank/omitted hand.
     let hands={N:{S:[],H:[],D:[],C:[]},W:{S:[],H:[],D:[],C:[]},E:{S:[],H:[],D:[],C:[]},S:{S:[],H:[],D:[],C:[]}};
-    if(dm){
-      let d=dm[1];
-      [dm[2],dm[3],dm[4],dm[5]].forEach(hs=>{
-        hs.split('.').forEach((s,j)=>{ hands[d][SUIT_ORDER[j]]=s==='-'?[]:s.toUpperCase().split(''); });
-        d=nextDir(d);
-      });
+    const dmHead=tags.Deal.match(/^\s*([NWES]):\s*(.*)$/);
+    if(dmHead){
+      let d=dmHead[1];
+      // Split remaining into hand-tokens on whitespace; a lone "-" or "" means an omitted hand.
+      const handToks=dmHead[2].trim().split(/\s+/);
+      const filled=[];
+      for(let hi=0; hi<4; hi++){
+        const hs=handToks[hi];
+        if(hs===undefined || hs==='' || hs==='-'){ filled.push(null); d=nextDir(d); continue; }
+        hs.split('.').forEach((s,j)=>{ if(j<4) hands[d][SUIT_ORDER[j]]=s==='-'?[]:s.toUpperCase().split(''); });
+        filled.push(d); d=nextDir(d);
+      }
+      // If exactly one hand was omitted, reconstruct it from the remaining 51 cards.
+      const seatsInOrder=(()=>{ let arr=[],s=dmHead[1]; for(let k=0;k<4;k++){arr.push(s);s=nextDir(s);} return arr; })();
+      const missing=seatsInOrder.filter(s=>!filled.includes(s));
+      if(missing.length===1){
+        const seat=missing[0];
+        const full={S:new Set('AKQJT98765432'.split('')),H:new Set('AKQJT98765432'.split('')),D:new Set('AKQJT98765432'.split('')),C:new Set('AKQJT98765432'.split(''))};
+        ['N','E','S','W'].forEach(dir=>{ if(dir===seat) return; SUIT_ORDER.forEach(su=>{ (hands[dir][su]||[]).forEach(r=>full[su].delete(r)); }); });
+        SUIT_ORDER.forEach(su=>{ hands[seat][su]=[...full[su]]; });
+      }
     }
     boards.push({
       board:tags.Board||'?', event:tags.Event||'', site:tags.Site||'', date:tags.Date||'',
@@ -603,6 +618,18 @@ function App(){
     setNeedClientId(false);
   }
 
+  // Report any hand that isn't exactly 13 cards — the usual cause of
+  // "too few cards" errors in bridge software.
+  function handIssues(b){
+    if(!b) return [];
+    const out=[];
+    ['N','E','S','W'].forEach(d=>{
+      const n=['S','H','D','C'].reduce((t,s)=>t+(b.hands[d]?.[s]||[]).length,0);
+      if(n!==13) out.push(`${DNL[d]}: ${n} kaarten`);
+    });
+    return out;
+  }
+
   // ── Draft mutators ──
   const mutate=fn=>setDraft(d=>{ const n=JSON.parse(JSON.stringify(d)); fn(n); return n; });
   const setBid=(idx,bid)=>mutate(d=>{
@@ -694,6 +721,11 @@ function App(){
           {saveState && (
             <div className={`status ${saveState.type}`}>
               {saveState.msg} {saveState.link && <a href={saveState.link} target="_blank" rel="noreferrer">Openen ↗</a>}
+            </div>
+          )}
+          {handIssues(draft).length>0 && (
+            <div className="status err">
+              ⚠ Let op — niet elke hand heeft 13 kaarten: {handIssues(draft).join(' · ')}. Dit bestand wordt door bridgeprogramma's afgekeurd. Controleer het bronbestand of vul de handen aan.
             </div>
           )}
 

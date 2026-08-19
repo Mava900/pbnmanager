@@ -62,6 +62,30 @@ a{color:var(--felt);}
 .suit-ranks{letter-spacing:.1em;font-variant-numeric:tabular-nums;word-spacing:2px;}
 .suit-void{color:var(--ink-faint);}
 
+/* ── HAND EDITOR (onder de handen) ── */
+.hand-editor{margin-top:14px;border:1px solid var(--line);border-radius:4px;background:var(--paper-card);padding:12px;}
+.he-title{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;color:var(--felt);margin-bottom:8px;}
+.he-seats{display:flex;gap:5px;margin-bottom:10px;}
+.he-seat{flex:1;padding:7px 4px;border:1.5px solid var(--line);border-radius:4px;background:#fff;cursor:pointer;font-size:12px;font-weight:700;text-align:center;color:var(--ink-soft);}
+.he-seat.active{border-color:var(--felt);background:var(--felt);color:#fff;}
+.he-seat .he-count{display:block;font-size:10px;font-weight:600;margin-top:2px;opacity:.75;}
+.he-seat.full{border-color:var(--success);}
+.he-grid{display:flex;flex-direction:column;gap:5px;}
+.he-suitrow{display:flex;align-items:center;gap:4px;}
+.he-suitsym{width:18px;flex:none;font-size:15px;font-weight:700;text-align:center;}
+.he-cards{display:flex;flex-wrap:wrap;gap:3px;flex:1;}
+.he-card{min-width:26px;padding:5px 3px;border:1px solid var(--line);border-radius:3px;background:#fff;cursor:pointer;font-size:12px;font-weight:700;text-align:center;transition:all .1s;}
+.he-card.mine{background:var(--felt);color:#fff;border-color:var(--felt);}
+.he-card.taken{background:var(--paper-deep);color:var(--ink-faint);opacity:.5;cursor:not-allowed;text-decoration:line-through;}
+.he-card:not(.taken):not(.mine):hover{border-color:var(--felt);background:var(--paper-deep);}
+.he-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;}
+.he-field{display:flex;flex-direction:column;gap:3px;}
+.he-field label{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-faint);}
+.he-field select,.he-field input{padding:6px 8px;border:1px solid var(--line);border-radius:3px;font-size:13px;font-family:'Inter';background:#fff;color:var(--ink);}
+.he-field select:focus,.he-field input:focus{outline:none;border-color:var(--felt);}
+.he-clear{background:none;border:none;color:var(--ink-faint);font-size:11px;cursor:pointer;text-decoration:underline;padding:2px;}
+.he-clear:hover{color:var(--burgundy);}
+
 /* ── EDIT ROWS ── */
 .erow{display:grid;grid-template-columns:58px 62px 1fr 26px;gap:9px;align-items:start;padding:7px 9px;border:1px solid var(--line);border-radius:3px;background:var(--paper-card);margin-bottom:6px;}
 .erow.play{grid-template-columns:58px 62px 1fr;}
@@ -528,6 +552,7 @@ function App(){
   const [cardPicker,setCardPicker]=useState(null);
   const [saveState,setSaveState]=useState(null);
   const [saving,setSaving]=useState(false);
+  const [editSeat,setEditSeat]=useState(null); // which hand is being filled (N/E/S/W) or null
   const [token,setToken]=useState(null);
   const [showDrive,setShowDrive]=useState(false);
   const [clientId,setClientId]=useState(()=>localStorage.getItem('pbnmgr_clientId')||'');
@@ -578,6 +603,24 @@ function App(){
     setFileName(`${base}_bewerkt.pbn`);
     setShowDrive(false);
     setSaveState({type:'info',msg:`${parsed.length} spel${parsed.length>1?'len':''} geladen uit ${name||'bestand'}.`});
+  }
+
+  // Create a completely empty board to fill from scratch.
+  function newGame(){
+    const empty={
+      board:'1', event:'', site:'', date:'', round:'',
+      playerN:'', playerE:'', playerS:'', playerW:'',
+      scoring:'MP', result:'',
+      hands:{N:{S:[],H:[],D:[],C:[]},E:{S:[],H:[],D:[],C:[]},S:{S:[],H:[],D:[],C:[]},W:{S:[],H:[],D:[],C:[]}},
+      declarer:'', contract:'', vulnerable:'None',
+      auction:[], auctionDealer:'N', auctionComments:{},
+      play:[], playLeader:'', playComments:{},
+      description:'',
+    };
+    setBoards([empty]); setActive(0);
+    setFileName('nieuw_spel.pbn');
+    setEditSeat('N');
+    setSaveState({type:'info',msg:'Nieuw leeg spel aangemaakt. Kies een hand en klik de kaarten aan.'});
   }
 
   // ── Local file ──
@@ -654,6 +697,27 @@ function App(){
     d.play.splice(ti,1);
     const nc={}; Object.entries(d.playComments||{}).forEach(([k,v])=>{const ki=+k; if(ki<ti)nc[ki]=v; else if(ki>ti)nc[ki-1]=v;}); d.playComments=nc;
   });
+  // Metadata setters (dealer, contract, vulnerability, board number, declarer).
+  const setMeta=(key,val)=>mutate(d=>{ d[key]=val; });
+  // Which seat currently holds a given card (suit+rank), or null.
+  function seatHolding(d,suit,rank){
+    for(const s of ['N','E','S','W']) if((d.hands[s][suit]||[]).includes(rank)) return s;
+    return null;
+  }
+  // Toggle a card into/out of the currently-selected hand.
+  const toggleCard=(suit,rank)=>mutate(d=>{
+    if(!editSeat) return;
+    const holder=seatHolding(d,suit,rank);
+    if(holder===editSeat){
+      // remove from this hand
+      d.hands[editSeat][suit]=d.hands[editSeat][suit].filter(r=>r!==rank);
+    } else {
+      // remove from any other hand, then add here
+      if(holder) d.hands[holder][suit]=d.hands[holder][suit].filter(r=>r!==rank);
+      d.hands[editSeat][suit]=[...d.hands[editSeat][suit],rank];
+    }
+  });
+  const clearSeat=seat=>mutate(d=>{ d.hands[seat]={S:[],H:[],D:[],C:[]}; });
 
   const dealer=draft?.auctionDealer||'N';
   const leader=draft?draft.playLeader||getLHO(draft.declarer):'W';
@@ -671,6 +735,8 @@ function App(){
         <button className="btn" onClick={connectDrive}>Google Drive…</button>
         <button className="btn sec" onClick={pickLocal}>Bestand van computer…</button>
         <input ref={fileInputRef} type="file" accept=".pbn" style={{display:'none'}} onChange={onLocalFile}/>
+        <span className="src-sep"></span>
+        <button className="btn gold" onClick={newGame}>+ Nieuw spel</button>
         {boards.length>1 && (
           <>
             <span className="src-sep"></span>
@@ -747,6 +813,94 @@ function App(){
                 </div>
                 <div className="dia-hand s"><HandView seat="S" hand={draft.hands.S}/></div>
                 <div className="dia-hand w"><HandView seat="W" hand={draft.hands.W}/></div>
+              </div>
+
+              {/* Hand editor — invoeren/wijzigen van de kaartverdeling */}
+              <div className="hand-editor">
+                <div className="he-title">Kaarten invoeren / wijzigen</div>
+                <div className="he-seats">
+                  {['N','E','S','W'].map(s=>{
+                    const cnt=SUIT_ORDER.reduce((n,su)=>n+(draft.hands[s][su]||[]).length,0);
+                    return (
+                      <button key={s} className={`he-seat${editSeat===s?' active':''}${cnt===13?' full':''}`} onClick={()=>setEditSeat(editSeat===s?null:s)}>
+                        {DNL[s]}<span className="he-count">{cnt}/13</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {editSeat ? (
+                  <>
+                    <div className="he-grid">
+                      {SUIT_ORDER.map(su=>(
+                        <div key={su} className="he-suitrow">
+                          <span className="he-suitsym" style={{color:SC[su]}}>{SS[su]}</span>
+                          <div className="he-cards">
+                            {RANK_ORDER.split('').map(r=>{
+                              const holder=seatHolding(draft,su,r);
+                              const mine=holder===editSeat;
+                              const taken=holder && !mine;
+                              return (
+                                <button key={r}
+                                  className={`he-card${mine?' mine':''}${taken?' taken':''}`}
+                                  disabled={taken}
+                                  onClick={()=>!taken&&toggleCard(su,r)}
+                                  title={taken?`In hand van ${DNL[holder]}`:''}>
+                                  {RD(r)}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{textAlign:'right',marginTop:6}}>
+                      <button className="he-clear" onClick={()=>clearSeat(editSeat)}>Hand {DNL[editSeat]} leegmaken</button>
+                    </div>
+                  </>
+                ) : (
+                  <p style={{fontSize:12,color:'var(--ink-faint)',fontStyle:'italic',margin:'4px 0'}}>Kies hierboven een hand om de kaarten aan te klikken.</p>
+                )}
+
+                {/* Spelgegevens */}
+                <div className="he-meta">
+                  <div className="he-field">
+                    <label>Bordnr.</label>
+                    <input value={draft.board||''} onChange={e=>setMeta('board',e.target.value)}/>
+                  </div>
+                  <div className="he-field">
+                    <label>Deler</label>
+                    <select value={draft.auctionDealer||'N'} onChange={e=>setMeta('auctionDealer',e.target.value)}>
+                      {['N','E','S','W'].map(s=><option key={s} value={s}>{DNL[s]}</option>)}
+                    </select>
+                  </div>
+                  <div className="he-field">
+                    <label>Kwetsbaar</label>
+                    <select value={draft.vulnerable||'None'} onChange={e=>setMeta('vulnerable',e.target.value)}>
+                      <option value="None">Niemand</option>
+                      <option value="NS">NZ</option>
+                      <option value="EW">OW</option>
+                      <option value="All">Allen</option>
+                    </select>
+                  </div>
+                  <div className="he-field">
+                    <label>Contract</label>
+                    <input value={draft.contract||''} placeholder="bv. 3NT of 4H" onChange={e=>setMeta('contract',e.target.value.toUpperCase())}/>
+                  </div>
+                  <div className="he-field">
+                    <label>Leider</label>
+                    <select value={draft.declarer||''} onChange={e=>setMeta('declarer',e.target.value)}>
+                      <option value="">—</option>
+                      {['N','E','S','W'].map(s=><option key={s} value={s}>{DNL[s]}</option>)}
+                    </select>
+                  </div>
+                  <div className="he-field">
+                    <label>Uitkomst door</label>
+                    <select value={draft.playLeader||''} onChange={e=>setMeta('playLeader',e.target.value)}>
+                      <option value="">automatisch</option>
+                      {['N','E','S','W'].map(s=><option key={s} value={s}>{DNL[s]}</option>)}
+                    </select>
+                  </div>
+                </div>
               </div>
             </div>
 

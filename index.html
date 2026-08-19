@@ -50,20 +50,16 @@ a{color:var(--felt);}
 .col-title{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--felt);margin:0 0 10px;padding-bottom:5px;border-bottom:1.5px solid var(--line);display:flex;justify-content:space-between;align-items:baseline;}
 .col-title .meta{font-family:'Inter';font-size:11px;font-weight:600;color:var(--ink-faint);letter-spacing:.03em;}
 
-/* ── DIAGRAM ── */
-.diagram{background:var(--felt);border-radius:5px;padding:12px;display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:auto auto auto;gap:7px;box-shadow:inset 0 0 24px rgba(0,0,0,.25);}
-.dia-hand{background:var(--paper-card);border-radius:3px;padding:8px 10px;font-size:13px;line-height:1.5;}
-.dia-hand.n{grid-column:2;grid-row:1;}
-.dia-hand.w{grid-column:1;grid-row:2;}
-.dia-hand.e{grid-column:3;grid-row:2;}
-.dia-hand.s{grid-column:2;grid-row:3;}
-.dia-center{grid-column:2;grid-row:2;display:flex;flex-direction:column;align-items:center;justify-content:center;color:rgba(255,255,255,.85);text-align:center;gap:2px;}
-.dia-center .ct-contract{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;}
-.dia-center .ct-decl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.6);}
+/* ── HANDS (stacked, full-width so long suits never clip) ── */
+.diagram{background:var(--felt);border-radius:5px;padding:10px;display:flex;flex-direction:column;gap:7px;box-shadow:inset 0 0 24px rgba(0,0,0,.25);}
+.dia-hand{background:var(--paper-card);border-radius:3px;padding:8px 11px;font-size:13px;line-height:1.55;}
+.dia-center{background:var(--felt-soft);border-radius:3px;padding:6px;display:flex;align-items:center;justify-content:center;gap:8px;color:rgba(255,255,255,.9);}
+.dia-center .ct-contract{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;}
+.dia-center .ct-decl{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.65);}
 .hand-seat{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:3px;}
-.suit-line{display:flex;gap:6px;align-items:baseline;}
+.suit-line{display:flex;gap:7px;align-items:baseline;}
 .suit-sym{width:14px;flex:none;display:inline-block;font-size:13px;text-align:center;}
-.suit-ranks{letter-spacing:.08em;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.suit-ranks{letter-spacing:.1em;font-variant-numeric:tabular-nums;word-spacing:2px;}
 .suit-void{color:var(--ink-faint);}
 
 /* ── EDIT ROWS ── */
@@ -743,13 +739,14 @@ function App(){
             <div>
               <div className="col-title">Handen <span className="meta">spel #{draft.board}</span></div>
               <div className="diagram">
-                {['N','W','E','S'].map(dir=>(
-                  <div key={dir} className={`dia-hand ${dir.toLowerCase()}`}><HandView seat={dir} hand={draft.hands[dir]}/></div>
-                ))}
+                <div className="dia-hand n"><HandView seat="N" hand={draft.hands.N}/></div>
+                <div className="dia-hand e"><HandView seat="E" hand={draft.hands.E}/></div>
                 <div className="dia-center">
-                  <div className="ct-contract">{parseContract(draft.contract).disp}</div>
-                  {draft.declarer && <div className="ct-decl">door {DNL[draft.declarer]}</div>}
+                  <span className="ct-contract">{parseContract(draft.contract).disp}</span>
+                  {draft.declarer && <span className="ct-decl">door {DNL[draft.declarer]}</span>}
                 </div>
+                <div className="dia-hand s"><HandView seat="S" hand={draft.hands.S}/></div>
+                <div className="dia-hand w"><HandView seat="W" hand={draft.hands.W}/></div>
               </div>
             </div>
 

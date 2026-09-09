@@ -45,7 +45,7 @@ a{color:var(--felt);}
 .empty .big-mark{font-size:52px;color:var(--line);margin-bottom:14px;}
 .empty h2{font-family:'Cormorant Garamond',serif;font-weight:500;font-size:26px;color:var(--felt);margin:0 0 10px;}
 .empty p{color:var(--ink-soft);font-size:14px;line-height:1.6;}
-.grid{display:grid;grid-template-columns:290px 1fr 300px;gap:18px;align-items:start;}
+.grid{display:grid;grid-template-columns:360px 1fr 300px;gap:18px;align-items:start;}
 @media(max-width:1040px){.grid{grid-template-columns:1fr;}}
 .col-title{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--felt);margin:0 0 10px;padding-bottom:5px;border-bottom:1.5px solid var(--line);display:flex;justify-content:space-between;align-items:baseline;}
 .col-title .meta{font-family:'Inter';font-size:11px;font-weight:600;color:var(--ink-faint);letter-spacing:.03em;}
@@ -53,18 +53,18 @@ a{color:var(--felt);}
 /* ── HANDS (stacked, full-width so long suits never clip) ── */
 .diagram{background:var(--felt);border-radius:5px;padding:12px;display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:auto auto auto;gap:8px;box-shadow:inset 0 0 24px rgba(0,0,0,.25);align-items:stretch;}
 .dia-hand{background:var(--paper-card);border-radius:3px;padding:8px 11px;font-size:13px;line-height:1.55;}
-.dia-hand.n{grid-column:2;grid-row:1;}
+.dia-hand.n{grid-column:1 / 4;grid-row:1;}
 .dia-hand.w{grid-column:1;grid-row:2;}
 .dia-hand.e{grid-column:3;grid-row:2;}
-.dia-hand.s{grid-column:2;grid-row:3;}
+.dia-hand.s{grid-column:1 / 4;grid-row:3;}
 .dia-center{grid-column:2;grid-row:2;background:var(--felt-soft);border-radius:3px;padding:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:rgba(255,255,255,.9);text-align:center;}
 @media(max-width:420px){.diagram{gap:5px;padding:8px;}.dia-hand{padding:6px 7px;font-size:12px;}}
 .dia-center .ct-contract{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;}
 .dia-center .ct-decl{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.65);}
 .hand-seat{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:3px;}
-.suit-line{display:flex;gap:7px;align-items:baseline;}
-.suit-sym{width:14px;flex:none;display:inline-block;font-size:13px;text-align:center;}
-.suit-ranks{letter-spacing:.1em;font-variant-numeric:tabular-nums;word-spacing:2px;}
+.suit-line{display:flex;gap:6px;align-items:baseline;}
+.suit-sym{width:13px;flex:none;display:inline-block;font-size:13px;text-align:center;}
+.suit-ranks{letter-spacing:.06em;font-variant-numeric:tabular-nums;word-spacing:1px;white-space:nowrap;}
 .suit-void{color:var(--ink-faint);}
 
 /* ── HAND EDITOR (onder de handen) ── */
